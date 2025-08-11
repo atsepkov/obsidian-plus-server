@@ -13,8 +13,9 @@ CREATE TABLE IF NOT EXISTS clients (
   last_seen INTEGER
 );
 CREATE TABLE IF NOT EXISTS subscriptions (
-  client_id TEXT,
-  channel   TEXT,
+  client_id   TEXT,
+  channel     TEXT,
+  last_polled INTEGER,
   PRIMARY KEY (client_id, channel)
 );
 CREATE TABLE IF NOT EXISTS messages (
@@ -26,6 +27,10 @@ CREATE TABLE IF NOT EXISTS messages (
   parent_id  TEXT
 );
 `);
+// upgrade from earlier schema without last_polled
+try {
+  db.exec("ALTER TABLE subscriptions ADD COLUMN last_polled INTEGER");
+} catch {}
 
 const JWT_SECRET = process.env.JWT_SECRET ?? "dev‑secret";
 
@@ -100,8 +105,8 @@ serve({
         const client = verify(req);
         const { channel } = await req.json();
         db.run(
-          "INSERT OR IGNORE INTO subscriptions (client_id, channel) VALUES (?,?)",
-          [client, channel],
+          "INSERT OR IGNORE INTO subscriptions (client_id, channel, last_polled) VALUES (?,?,?)",
+          [client, channel, Date.now()],
         );
         return json({ ok: true });
       },
@@ -123,7 +128,9 @@ serve({
                                      WHERE client_id = ?))`,
           )
           .all(since, client, client);
-        db.run("UPDATE clients SET last_seen=? WHERE id=?", [Date.now(), client]);
+        const now = Date.now();
+        db.run("UPDATE clients SET last_seen=? WHERE id=?", [now, client]);
+        db.run("UPDATE subscriptions SET last_polled=? WHERE client_id=?", [now, client]);
         return json(rows);
       },
     },

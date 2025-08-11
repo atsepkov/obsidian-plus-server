@@ -4,7 +4,7 @@ import { Database } from "bun:sqlite";
 import jwt from "jsonwebtoken";
 
 // ---------- DB ----------
-const db = new Database("messages.db", { create: true });
+const db = new Database(process.env.DB_PATH ?? "messages.db", { create: true });
 db.exec(`PRAGMA journal_mode = WAL;`);
 db.exec(`
 CREATE TABLE IF NOT EXISTS clients (
@@ -55,8 +55,9 @@ function verify(req: Request): string {
 }
 
 // ---------- server ----------
-serve({
-  port: 3000,
+const PORT = Number(process.env.PORT) || 3000;
+export const server = serve({
+  port: PORT,
 
   routes: {
     // -------- REGISTER --------
@@ -96,6 +97,25 @@ serve({
             ).get(channel) as { c: number }).c
           : 1;
         return json({ id, deliveredTo });
+      },
+    },
+
+    // -------- INCOMING --------
+    "/incoming": {
+      POST: async req => {
+        const { client_id, secret, content } = await req.json();
+        const row = db
+          .query("SELECT secret FROM clients WHERE id=?")
+          .get(client_id) as { secret: string } | undefined;
+        if (!row || row.secret !== secret)
+          return json({ error: "forbidden" }, 403);
+        const id = crypto.randomUUID();
+        db.run(
+          `INSERT INTO messages (id,channel,sender_id,content,timestamp,parent_id)
+           VALUES (?,?,?,?,?,?)`,
+          [id, client_id, "external", content, Date.now(), null],
+        );
+        return json({ id });
       },
     },
 

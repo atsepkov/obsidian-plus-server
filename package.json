@@ -2,8 +2,12 @@
   "name": "obsidian-plus-server",
   "module": "index.ts",
   "type": "module",
+  "scripts": {
+    "test": "bun test"
+  },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/jsonwebtoken": "^9.0.10"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"

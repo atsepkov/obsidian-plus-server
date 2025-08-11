@@ -146,6 +146,37 @@ conversation threads.
   returns `deliveredTo: 0`. A client subscribing later and polling with the
   default `since` will receive the backlog.
 
+### `POST /incoming`
+Delivers a message from an external service to a client using a shared secret.
+
+**Request body**
+
+```json
+{
+  "client_id": "CLIENT_ID",
+  "secret": "CLIENT_SECRET",
+  "content": "Message text"
+}
+```
+
+**Response**
+
+```json
+{ "id": "MESSAGE_ID" }
+```
+
+**Example**
+
+```bash
+curl -X POST http://localhost:3000/incoming \
+  -H "Content-Type: application/json" \
+  -d '{"client_id":"CLIENT_ID","secret":"CLIENT_SECRET","content":"hi"}'
+```
+
+**Notes**
+
+- Returns `403` if the provided secret does not match the registered client.
+
 ### `POST /subscribe`
 Subscribes the authenticated client to a channel.
 
